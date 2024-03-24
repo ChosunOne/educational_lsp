@@ -4,7 +4,8 @@ use std::{
 };
 
 use tower_lsp::lsp_types::{
-    GotoDefinitionResponse, Hover, HoverContents, Location, MarkedString, Position, Url,
+    CodeAction, CodeActionOrCommand, CodeActionResponse, GotoDefinitionResponse, Hover,
+    HoverContents, Location, MarkedString, Position, Range, TextEdit, Url, WorkspaceEdit,
 };
 
 #[derive(Debug, Default)]
@@ -58,5 +59,67 @@ impl State {
                 },
             },
         });
+    }
+
+    pub fn code_action(&self, uri: &Url) -> CodeActionResponse {
+        let lock = self
+            .documents
+            .lock()
+            .expect("Failed to lock state documents");
+        let mut actions = vec![];
+        let text = lock.get(uri).expect("Failed to find document: {uri}");
+        for (row, line) in text.split("\n").enumerate() {
+            let find_idx = line.find("VS Code");
+            if let Some(idx) = find_idx {
+                let idx_32: u32 = idx.try_into().expect("Failed to convert usize to u32");
+                let row_32: u32 = row.try_into().expect("Failed to convert usize to u32");
+
+                let idx_len: u32 = "VS Code"
+                    .len()
+                    .try_into()
+                    .expect("Failed to convert usize to u32");
+                let replace_change = TextEdit {
+                    range: Self::line_range(row_32, idx_32, idx_32 + idx_len),
+                    new_text: "Neovim".into(),
+                };
+                actions.push(CodeActionOrCommand::CodeAction(CodeAction {
+                    title: "Replace VS C*de with a superior editor".into(),
+                    edit: WorkspaceEdit {
+                        changes: HashMap::from([(uri.clone(), vec![replace_change])]).into(),
+                        ..Default::default()
+                    }
+                    .into(),
+                    ..Default::default()
+                }));
+
+                let censor_change = TextEdit {
+                    range: Self::line_range(row_32, idx_32, idx_32 + idx_len),
+                    new_text: "VS C*de".into(),
+                };
+                actions.push(CodeActionOrCommand::CodeAction(CodeAction {
+                    title: "Censor to VS C*de".into(),
+                    edit: WorkspaceEdit {
+                        changes: HashMap::from([(uri.clone(), vec![censor_change])]).into(),
+                        ..Default::default()
+                    }
+                    .into(),
+                    ..Default::default()
+                }));
+            }
+        }
+        actions
+    }
+
+    fn line_range(line: u32, start: u32, end: u32) -> Range {
+        Range {
+            start: Position {
+                line,
+                character: start,
+            },
+            end: Position {
+                line,
+                character: end,
+            },
+        }
     }
 }

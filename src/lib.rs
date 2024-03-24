@@ -23,6 +23,7 @@ impl Backend {
             text_document_sync: TextDocumentSyncCapability::Kind(TextDocumentSyncKind::FULL).into(),
             hover_provider: HoverProviderCapability::Simple(true).into(),
             definition_provider: Some(OneOf::Left(true)),
+            code_action_provider: CodeActionProviderCapability::Simple(true).into(),
             ..Default::default()
         }
     }
@@ -83,6 +84,11 @@ impl LanguageServer for Backend {
             &params.text_document_position_params.text_document.uri,
             params.text_document_position_params.position,
         );
+        Ok(response.into())
+    }
+
+    async fn code_action(&self, params: CodeActionParams) -> Result<Option<CodeActionResponse>> {
+        let response = self.state.code_action(&params.text_document.uri);
         Ok(response.into())
     }
 
