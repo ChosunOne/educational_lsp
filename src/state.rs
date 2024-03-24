@@ -5,8 +5,8 @@ use std::{
 
 use tower_lsp::lsp_types::{
     CodeAction, CodeActionOrCommand, CodeActionResponse, CompletionItem, CompletionResponse,
-    Documentation, GotoDefinitionResponse, Hover, HoverContents, Location, MarkedString, Position,
-    Range, TextEdit, Url, WorkspaceEdit,
+    Diagnostic, DiagnosticSeverity, Documentation, GotoDefinitionResponse, Hover, HoverContents,
+    Location, MarkedString, Position, Range, TextEdit, Url, WorkspaceEdit,
 };
 
 #[derive(Debug, Default)]
@@ -15,20 +15,22 @@ pub struct State {
 }
 
 impl State {
-    pub fn open_document(&self, uri: Url, text: String) {
+    pub fn open_document(&self, uri: Url, text: String) -> Vec<Diagnostic> {
         let mut lock = self
             .documents
             .lock()
             .expect("Failed to lock state documents");
-        lock.insert(uri, text);
+        lock.insert(uri, text.clone());
+        Self::get_diagnostics_for_file(text)
     }
 
-    pub fn update_document(&self, uri: Url, text: String) {
+    pub fn update_document(&self, uri: Url, text: String) -> Vec<Diagnostic> {
         let mut lock = self
             .documents
             .lock()
             .expect("Failed to lock state documents");
-        lock.insert(uri, text);
+        lock.insert(uri, text.clone());
+        Self::get_diagnostics_for_file(text)
     }
 
     pub fn hover(&self, uri: &Url, _position: Position) -> Hover {
@@ -133,5 +135,47 @@ impl State {
                 character: end,
             },
         }
+    }
+
+    fn get_diagnostics_for_file(text: String) -> Vec<Diagnostic> {
+        let mut diagnostics = vec![];
+
+        for (row, line) in text.split("\n").enumerate() {
+            let row_32: u32 = row.try_into().expect("Failed to convert usize to u32");
+            let find_idx: Option<u32> = line
+                .find("VS Code")
+                .map(|idx| idx.try_into().expect("Failed to convert usize to u32"));
+            if let Some(idx) = find_idx {
+                let idx_len: u32 = "VS Code"
+                    .len()
+                    .try_into()
+                    .expect("Failed to convert usize to u32");
+                diagnostics.push(Diagnostic {
+                    range: Self::line_range(row_32, idx, idx + idx_len),
+                    severity: DiagnosticSeverity::ERROR.into(),
+                    source: "Common sense".to_owned().into(),
+                    message: "Please make sure we use good language".to_owned().into(),
+                    ..Default::default()
+                });
+            }
+            let find_idx: Option<u32> = line
+                .find("Neovim")
+                .map(|idx| idx.try_into().expect("Failed to convert usize to u32"));
+            if let Some(idx) = find_idx {
+                let idx_len: u32 = "Neovim"
+                    .len()
+                    .try_into()
+                    .expect("Failed to convert usize to u32");
+                diagnostics.push(Diagnostic {
+                    range: Self::line_range(row_32, idx, idx + idx_len),
+                    severity: DiagnosticSeverity::HINT.into(),
+                    source: "Common sense".to_owned().into(),
+                    message: "Great choice :)".to_owned().into(),
+                    ..Default::default()
+                });
+            }
+        }
+
+        diagnostics
     }
 }

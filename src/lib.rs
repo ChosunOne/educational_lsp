@@ -58,14 +58,21 @@ impl LanguageServer for Backend {
     }
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
-        self.state
-            .open_document(params.text_document.uri, params.text_document.text);
+        let diagnostics = self
+            .state
+            .open_document(params.text_document.uri.clone(), params.text_document.text);
+        self.client
+            .publish_diagnostics(params.text_document.uri, diagnostics, None)
+            .await;
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
         let uri = params.text_document.uri;
         for change in params.content_changes {
-            self.state.update_document(uri.clone(), change.text);
+            let diagnostics = self.state.update_document(uri.clone(), change.text);
+            self.client
+                .publish_diagnostics(uri.clone(), diagnostics, None)
+                .await;
         }
     }
 
