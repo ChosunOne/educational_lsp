@@ -24,6 +24,7 @@ impl Backend {
             hover_provider: HoverProviderCapability::Simple(true).into(),
             definition_provider: Some(OneOf::Left(true)),
             code_action_provider: CodeActionProviderCapability::Simple(true).into(),
+            completion_provider: CompletionOptions::default().into(),
             ..Default::default()
         }
     }
@@ -89,6 +90,13 @@ impl LanguageServer for Backend {
 
     async fn code_action(&self, params: CodeActionParams) -> Result<Option<CodeActionResponse>> {
         let response = self.state.code_action(&params.text_document.uri);
+        Ok(response.into())
+    }
+
+    async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
+        let response = self
+            .state
+            .completion(&params.text_document_position.text_document.uri);
         Ok(response.into())
     }
 

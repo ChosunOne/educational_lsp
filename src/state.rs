@@ -4,8 +4,9 @@ use std::{
 };
 
 use tower_lsp::lsp_types::{
-    CodeAction, CodeActionOrCommand, CodeActionResponse, GotoDefinitionResponse, Hover,
-    HoverContents, Location, MarkedString, Position, Range, TextEdit, Url, WorkspaceEdit,
+    CodeAction, CodeActionOrCommand, CodeActionResponse, CompletionItem, CompletionResponse,
+    Documentation, GotoDefinitionResponse, Hover, HoverContents, Location, MarkedString, Position,
+    Range, TextEdit, Url, WorkspaceEdit,
 };
 
 #[derive(Debug, Default)]
@@ -108,6 +109,17 @@ impl State {
             }
         }
         actions
+    }
+
+    pub fn completion(&self, _uri: &Url) -> CompletionResponse {
+        let items = vec![CompletionItem {
+            label: "Neovim (BTW)".into(),
+            detail: "Very cool editor".to_owned().into(),
+            documentation: Documentation::String("Some example documentation".into()).into(),
+            ..Default::default()
+        }];
+
+        CompletionResponse::Array(items)
     }
 
     fn line_range(line: u32, start: u32, end: u32) -> Range {
